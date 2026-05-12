@@ -86,15 +86,16 @@ class IPMIPlatform( UnknownPlatform ):
     # self._command( 'sol set force-authentication true {0}'.format( self.lan_channel ), True )
     # self._command( 'sol set enabled true {0}'.format( self.lan_channel ) )
     # self._command( 'sol set privilege-level user {0}'.format( self.lan_channel ), True )  # dosen't work on some SM boxes?
-    # self._command( 'sol payload enable {0} 5'.format( self.lan_channel ) )
 
-    # remove the other users first
-    # lib.ipmicommand( 'user disable 5' )
-    # lib.ipmicommand( 'user set name 5 {0}_'.format( ipmi_username ) )  # some ipmi's don't like you to set the username to the same as it is allready....Intel!!!
-    # lib.ipmicommand( 'user set name 5 {0}'.format( ipmi_username ) )
-    # lib.ipmicommand( 'user set password 5 {0}'.format( ipmi_password ) )
-    # lib.ipmicommand( 'user enable 5' )
-    # lib.ipmicommand( 'user priv 5 4 {0}'.format( self.lan_channel ) )  # 4 = ADMINISTRATOR
+    # list user, see if the user exists('user list'), if so set user_slot else user_slot = 5
+    # self._command( f'user disable {user_slot}' )
+    # self._command( f'user set name {user_slot} {ipmi_username}' )
+    # self._command( f'user set password {user_slot} {ipmi_password}' )
+    # self._command( 'user enable {user_slot}' )
+    # old: self._command( f'user priv {user_slot} 4 {self.lan_channel}' )  # 4 = ADMINISTRATOR
+    # -- or --
+    # self._command( f'channel setaccess 1 {user_slot} callin=on ipmi=on link=on privilege=4' ) # 4 = ADMINISTRATOR
+    # self._command( f'sol payload enable {self.lan_channel} {user_slot}' )
     # return True
 
   def setIp( self ):
