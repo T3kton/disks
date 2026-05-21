@@ -24,6 +24,9 @@ do
   if [ "x$(cat /sys/class/net/$iface/operstate)" == "xup" ];
   then
     iface_list_up="$iface_list_up $iface"
+
+    # disable any LLDP offloading, this will fail on unsupported interfaces, that is ok
+    /sbin/ethtool --set-priv-flags $iface disable-fw-lldp on || true
   fi
 done
 
