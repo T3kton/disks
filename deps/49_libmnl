@@ -1,0 +1,31 @@
+#!/bin/sh
+#SOURCE: https://www.netfilter.org/pub/libmnl/libmnl-1.0.5.tar.bz2
+#HASH: 63c6456b77f7978a7b37e62c1b38346b2ef2d91c
+
+set -e
+#set -x
+
+build()
+{
+  if [ "x$1" = "xx86_64" ]
+  then
+    ./configure --prefix=/
+  elif [ "x$1" = "xarm64" ]
+  then
+    ./configure --prefix=/ --host aarch64-linux-gnu --build x86_64-pc-linux-gnu
+  fi
+  make $2
+  make install
+}
+
+install()
+{
+  :
+}
+
+binaries()
+{
+  :
+}
+
+# only used by ethtool

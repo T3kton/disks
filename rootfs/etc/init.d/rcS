@@ -19,6 +19,7 @@ echo "Setting up file system..."
 /bin/mount -n -t proc -o nodev,noexec,nosuid none /proc
 /bin/mount -n -t devtmpfs -o nosuid,mode=0755 devtmpfs /dev
 /bin/mount -n -t efivarfs -o nodev,noexec,nosuid none /sys/firmware/efi/efivars
+/bin/mount -n -t debugfs -o nodev,noexec,nosuid none /sys/kernel/debug
 
 mkdir -m 755 /dev/pts
 /bin/mount -n -t devpts -o mode=0644 none /dev/pts
