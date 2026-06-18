@@ -40,11 +40,11 @@ iface {{ ifname }} inet static
 {% if interface.master_interface and not address.tagged and not address.alias_index %}
 {% do _hide_interfaces.append( interface.master_interface ) %}{% for tmp in interface.slave_interfaces %}{% do _hide_interfaces.append( tmp ) %}{% endfor %}
   bond-slaves {{ interface.master_interface }} {{ interface.slave_interfaces|join( ' ' ) }}
-{% if interface.bonding_paramaters.mode %}  bond-mode {{ interface.bonding_paramaters.mode }}{% endif %}
-{% if interface.bonding_paramaters.miimon %}  bond-miimon {{ interface.bonding_paramaters.miimon }}{% endif %}
-{% if interface.bonding_paramaters.downdelay %}  bond-downdelay {{ interface.bonding_paramaters.downdelay }}{% endif %}
-{% if interface.bonding_paramaters.updelay %}  bond-updelay {{ interface.bonding_paramaters.updelay }}{% endif %}
-{% if interface.bonding_paramaters.xmit_hash_policy %}  bond-xmit_hash_policy {{ interface.bonding_paramaters.xmit_hash_policy }}{% endif %}
+{% if interface.bonding_parameters.mode %}  bond-mode {{ interface.bonding_parameters.mode }}{% endif %}
+{% if interface.bonding_parameters.miimon %}  bond-miimon {{ interface.bonding_parameters.miimon }}{% endif %}
+{% if interface.bonding_parameters.downdelay %}  bond-downdelay {{ interface.bonding_parameters.downdelay }}{% endif %}
+{% if interface.bonding_parameters.updelay %}  bond-updelay {{ interface.bonding_parameters.updelay }}{% endif %}
+{% if interface.bonding_parameters.xmit_hash_policy %}  bond-xmit_hash_policy {{ interface.bonding_parameters.xmit_hash_policy }}{% endif %}
 auto {{ interface.master_interface }}
 iface {{ interface.master_interface }} inet manual
   bond-master {{ interface }}

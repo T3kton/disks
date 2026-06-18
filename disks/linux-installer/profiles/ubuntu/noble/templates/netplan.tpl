@@ -39,9 +39,9 @@ network:
       {%- endif %}
       {%- if loop_type == 'bonds' %}
       interfaces: [ {{ ', '.join( [ interface.primary ] + interface.secondary ) }} ]
-        {%- if interface.paramaters %}
+        {%- if interface.parameters %}
       parameters:
-          {%- for key, value in interface.paramaters.items() %}
+          {%- for key, value in interface.parameters.items() %}
         {{ key }}: {{ value }}
           {%- endfor %}
         {%- endif %}

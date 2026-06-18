@@ -12,7 +12,7 @@
 
 {% if interface.master_interface and not address.vlan and not address.alias_index %}
 BONDING_MASTER=yes
-BONDING_MODULE_OPTS='{% if interface.bonding_paramaters.mode %}mode={{ interface.bonding_paramaters.mode }}{% endif %}{% if interface.bonding_paramaters.miimon %} miimon={{ interface.bonding_paramaters.miimon }}{% endif %}{% if interface.bonding_paramaters.downdelay %} downdelay={{ interface.bonding_paramaters.downdelay }}{% endif %}{% if interface.bonding_paramaters.updelay %} updelay={{ interface.bonding_paramaters.updelay }}{% endif %}'
+BONDING_MODULE_OPTS='{% if interface.bonding_parameters.mode %}mode={{ interface.bonding_parameters.mode }}{% endif %}{% if interface.bonding_parameters.miimon %} miimon={{ interface.bonding_parameters.miimon }}{% endif %}{% if interface.bonding_parameters.downdelay %} downdelay={{ interface.bonding_parameters.downdelay }}{% endif %}{% if interface.bonding_parameters.updelay %} updelay={{ interface.bonding_parameters.updelay }}{% endif %}'
 BONDING_SLAVE0={{ name_map[interface.master_interface] }}
 {% for slave in interface.slave_interfaces %}
 BONDING_SLAVE{{ loop.index }}={{ name_map[slave] }}

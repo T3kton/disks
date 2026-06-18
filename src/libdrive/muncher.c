@@ -184,7 +184,7 @@ inline int flipCoin()
 
 int main( int argc, char **argv )
 {
-  // paramaters
+  // parameters
   int readTest = 1;
   int writeTest = 0;
   int ignoreErrors = 0;

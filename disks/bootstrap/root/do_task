@@ -26,6 +26,7 @@ do
     iface_list_up="$iface_list_up $iface"
 
     # disable any LLDP offloading, this will fail on unsupported interfaces, that is ok
+    # TODO: do --show-priv-flags to see if the interface has this flag, if so set it
     /sbin/ethtool --set-priv-flags $iface disable-fw-lldp on || true
   fi
 done

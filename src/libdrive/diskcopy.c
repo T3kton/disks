@@ -295,7 +295,7 @@ int doCopy( struct device_handle *source, struct device_handle *target, __u16 co
 
 int main( int argc, char **argv )
 {
-  // paramaters
+  // parameters
   char *source;
   char *target;
   int disable_cache;

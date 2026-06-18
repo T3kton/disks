@@ -9,7 +9,7 @@ class URI():
       raise ValueError( 'root_path must start and end with "/"' )
 
     self.root_path = root_path
-    self.uri_regex = re.compile( r'^({0}|/)(([a-zA-Z0-9\-_.!~*]+/)*)([a-zA-Z0-9\-_.!~*]+)?(:([a-zA-Z0-9\-_.!~*\']*:)*)?(\([a-zA-Z0-9\-_.!~*]+\))?$'.format( self.root_path ) )
+    self.uri_regex = re.compile( r'^({0}|/)(([a-zA-Z0-9\-_.!~*<>]+/)*)([a-zA-Z0-9\-_.!~*<>]+)?(:([a-zA-Z0-9\-_.!~*\'<>]*:)*)?(\([a-zA-Z0-9\-_.!~*<>]+\))?$'.format( self.root_path ) )
 
   def split( self, uri, root_optional=False ):
     uri_match = self.uri_regex.match( uri )
@@ -72,7 +72,7 @@ class URI():
   def extractIds( self, uri_list ):  # TODO: should we make sure the namespace/model do not change in the list?
     """
     extract the record IDs from the URI's in uri_list, can handle some/all/none
-    of the URIs having multiple IDs in them allready, does not force uniqunes
+    of the URIs having multiple IDs in them already, does not force uniqunes
     order should remain intact
     """
     if isinstance( uri_list, str ):
@@ -89,14 +89,29 @@ class URI():
 
       ( _, _, _, _, rec_id, _, _ ) = uri_match.groups()
       if rec_id is None:
-        raise ValueError( 'No Id in URI "{0}"'.format( uri ) )
+        continue
 
       result += rec_id.strip( ':' ).split( ':' )
 
     return result
 
+  def uriListToMultiURI( self, uri_list ):
+    """
+    runs extract Ids on the list, then takes the first uri and applies all
+    the ids to it
+    """
+    if not uri_list:
+      return []
 
-# barrowed from https://www.python.org/dev/peps/pep-0257/
+    id_list = self.extractIds( uri_list )
+    if not id_list:
+      return []
+
+    ( namespace_list, model, action, _, _ ) = self.split( uri_list[0] )
+    return self.build( namespace_list, model, action, id_list, True )
+
+
+# borrowed from https://www.python.org/dev/peps/pep-0257/
 def doccstring_prep( docstring ):
   if not docstring:
     return ''

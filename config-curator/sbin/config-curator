@@ -36,7 +36,7 @@ oparser.add_option( '-p', '--update-config', help='Download latest config from c
 oparser.add_option( '-l', '--list', help='List last known config values, known templates and their status, tracked packages and their status, (-a assumed unless packages are specified)', dest='list', default=False, action='store_true' )
 
 oparser.add_option( '-d', '--diff', help='Show diffrences in config values and templates from what is on disk to what would be changed if a config run is done, dosn\'t update local cached config values', dest='diff', default=False, action='store_true' )
-oparser.add_option( '', '--diff-options', help='Paramaters to pass to diff for diffing target files, (ie: "-y -w")', dest='diff_options', default='' )
+oparser.add_option( '', '--diff-options', help='Parameters to pass to diff for diffing target files, (ie: "-y -w")', dest='diff_options', default='' )
 
 oparser.add_option( '-c', '--config', help='Build Configuration for the specified package, unless -o is specified -p is implied.', dest='config', default=False, action='store_true' )
 oparser.add_option( '-f', '--force', help='Build Configuration file even if local changes are detected, use with -c/--config', dest='force', default=False, action='store_true' )

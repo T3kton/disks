@@ -136,7 +136,7 @@ static int startSelfTest( struct device_handle *drive, int type, int captive )
 
 int main( int argc, char **argv )
 {
-  // paramaters
+  // parameters
   char *device;
   int monitor = 0;
   int status = 0;
