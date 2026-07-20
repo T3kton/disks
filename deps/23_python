@@ -44,7 +44,7 @@ install()
 
   ln -sf python $1/bin/python3
 
-  pip3 install --no-compile --target $1/lib/python3/ python-dateutil
+  pip3 install --no-compile --target $1/lib/python3/ cinp python-dateutil httpcore[asyncio]
 
   cat <<CUSTOMIZE > $1/lib/python3.12/sitecustomize.py
 import sys

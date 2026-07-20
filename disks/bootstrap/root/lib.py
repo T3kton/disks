@@ -17,11 +17,24 @@ class Bootstrap:
     self.request = contractor.request
 
     self.token = self.request( 'call', '/api/v1/Auth/User(login)', { 'username': 'bootstrap', 'password': 'bootstrap' }, retry_count=-1 )
-    contractor.cinp.setAuth( 'bootstrap', self.token )
+    contractor.cinp.setAuth( 'bootstrap', self.token )  # so this could be a problem, we are remembering our token, but cinp just replaced what ever it was logged in with this one
 
     self.request( 'call', '/api/v1/Survey/Cartographer(register)', { 'identifier': identifier }, retry_count=-1 )
 
-  def logout( self ):
+  def __enter__( self ):
+    return self
+
+  def __exit__( self, exc_type, exc, tb ):
+    if exc is not None:
+      try:
+        self.setMessage( 'Exception During Bootstrap: {0}'.format( exc ) )
+      except Exception:
+        pass  # don't let a reporting failure mask the original exception
+
+    self._logout()
+    # return None/False , let the exception keep going
+
+  def _logout( self ):
     try:
       self.request( 'call', '/api/v1/Auth/User(logout)', { 'token': self.token } )
     except Exception:
@@ -52,7 +65,7 @@ def getLLDP():
         if '=' not in line:
           continue
         ( key, value ) = line.split( '=' )
-        lldp_values[key] = value
+        lldp_values[ key ] = value
       break
 
     else:
@@ -64,7 +77,7 @@ def getLLDP():
       time.sleep( 10 )
 
   for item in lldp_values:
-    ( protocol, interface, name ) = item.split( '.', 2 )  # protocol, interface
+    ( _, interface, name ) = item.split( '.', 2 )  # ignorning the protocol
 
     if interface not in results:
       results[ interface ] = {}
@@ -107,26 +120,26 @@ def getIpAddress( interface ):
 
 def cpuPhysicalCount():
   wrk = []
-  cpuinfo = open( '/proc/cpuinfo', 'r' )
-  for line in cpuinfo.readlines():
-    if line.startswith( 'physical id' ) and line not in wrk:
-      wrk.append( line )
+  with open( '/proc/cpuinfo', 'r' ) as cpuinfo:
+    for line in cpuinfo.readlines():
+      if line.startswith( 'physical id' ) and line not in wrk:
+        wrk.append( line )
 
   return len( wrk )
 
 
 def cpuLogicalCount():
   wrk = []
-  cpuinfo = open( '/proc/cpuinfo', 'r' )
-  for line in cpuinfo.readlines():
-    if line.startswith( 'processor' ) and line not in wrk:
-      wrk.append( line )
+  with open( '/proc/cpuinfo', 'r' ) as cpuinfo:
+    for line in cpuinfo.readlines():
+      if line.startswith( 'processor' ) and line not in wrk:
+        wrk.append( line )
 
   return len( wrk )
 
 
 def getRAMAmmount():
-  meminfo = open( '/proc/meminfo', 'r' )
-  for line in meminfo.readlines():
-    if line.startswith( 'MemTotal' ):
-      return int( line.split( ':' )[1].strip().split( ' ' )[0] ) / 1024
+  with open( '/proc/meminfo', 'r' ) as meminfo:
+    for line in meminfo.readlines():
+      if line.startswith( 'MemTotal' ):
+        return int( line.split( ':' )[1].strip().split( ' ' )[0] ) // 1024  # in MiB

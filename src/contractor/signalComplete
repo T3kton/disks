@@ -4,8 +4,5 @@ import sys
 
 from contractor.client import getClient
 
-contractor = getClient( '/etc/job.config' )
-contractor.login()
-contractor.signalComplete()
-
-sys.exit( 0 )
+with getClient( '/etc/job.config' ) as contractor:
+  contractor.signalComplete()

@@ -18,7 +18,7 @@ def setupUsers( mount_point, profile, value_map ):
   if skel_dir is not None:
     src_dir = os.path.join( mount_point, skel_dir )
     dest_dir = os.path.join( mount_point, 'root' )
-    for filename in glob.glob( '{0}*'.format( src_dir ) ):
+    for filename in glob.glob( os.path.join( src_dir, '*' ) ) + glob.glob( os.path.join( src_dir, '.*' ) ):
       print( 'copy "{0}" to "{1}"'.format( filename, filename.replace( src_dir, dest_dir ) ) )
       shutil.copytree( filename, filename.replace( src_dir, dest_dir ), symlinks=True )
 
@@ -46,4 +46,5 @@ def setupUsers( mount_point, profile, value_map ):
     chroot_execute( '/usr/sbin/useradd {0} {1}'.format( ' '.join( args ), name ) )
 
     for item in user.get( 'sudo_list', [] ):
-      open( '{0}/etc/sudoers'.format( mount_point ), 'a' ).write( '{0} {1}\n'.format( name, item ) )
+      with open( '{0}/etc/sudoers'.format( mount_point ), 'a' ) as sudoer:
+        sudoer.write( '{0} {1}\n'.format( name, item ) )

@@ -1,6 +1,7 @@
 import os
 import glob
 import re
+import shlex
 import signal
 import time
 from configparser import NoOptionError
@@ -214,8 +215,10 @@ def _addBCache( id, backing_dev, cache_dev, mode ):  # until we find a way to ge
 
   execute( '/sbin/make-bcache --wipe-bcache {0} -B {1} -C {2}'.format( ( '--writeback' if mode == 'writeback' else '' ), backing_dev, cache_dev ) )
 
-  open( '/sys/fs/bcache/register', 'w' ).write( backing_dev )
-  open( '/sys/fs/bcache/register', 'w' ).write( cache_dev )
+  with open( '/sys/fs/bcache/register', 'w' ) as register:
+    register.write( backing_dev )
+  with open( '/sys/fs/bcache/register', 'w' ) as register:
+    register.write( cache_dev )
 
   return dev_name
 
@@ -223,12 +226,13 @@ def _addBCache( id, backing_dev, cache_dev, mode ):  # until we find a way to ge
 def _mdSyncPercentange():
   result = []
 
-  for line in open( '/proc/mdstat', 'r' ).readlines():
-    match = re.search( r'=[ ]+([0-9\.]+)%', line )
-    if not match:
-      continue
+  with open( '/proc/mdstat', 'r' ) as mdstat:
+    for line in mdstat.readlines():
+      match = re.search( r'=[ ]+([0-9\.]+)%', line )
+      if not match:
+        continue
 
-    result.append( float( match.group( 1 ) ) )
+      result.append( float( match.group( 1 ) ) )
 
   return result
 
@@ -342,12 +346,10 @@ def partition( profile, value_map ):
   if boot_fs_type not in mkfs_map.keys():
     raise FileSystemException( 'Invalid boot_fs_type "{0}"'.format( boot_fs_type ) )
 
-  md_meta_version = profile.get( 'filesystem', 'md_meta_version' )  # TODO:  remove md_meta_version from the profiles, then detect if the disks are 4K, if so use version 1.2 else 1.1, then update _mdSyncPercentange
-  try:
-    if value_map[ 'md_meta_version' ]:
-      md_meta_version = value_map[ 'md_meta_version' ]
-  except KeyError:
-    pass
+  if value_map.get( 'md_meta_version', None ) is not None:
+    md_meta_version = value_map[ 'md_meta_version' ]
+  else:
+    md_meta_version = profile.get( 'filesystem', 'md_meta_version' )  # TODO:  remove md_meta_version from the profiles, then detect if the disks are 4K, if so use version 1.2 else 1.1, then update _mdSyncPercentange
 
   try:
     tmp_target_drives = value_map[ 'target_drives' ]
@@ -378,30 +380,26 @@ def partition( profile, value_map ):
   else:
     boot_rsvd_size = 5
 
-  swap_size = 512
-  try:
-    if value_map[ 'swap_size' ]:
-      swap_size = int( value_map[ 'swap_size' ] )
-  except KeyError:
-    pass
+  if value_map.get( 'swap_size', None ) is not None:
+    swap_size = int( value_map[ 'swap_size' ] )
+  else:
+    swap_size = 512
 
-  boot_size = 512
-  try:
-    if value_map[ 'boot_size' ]:
-      boot_size = int( value_map[ 'boot_size' ] )
-  except KeyError:
-    pass
+  if value_map.get( 'boot_size', None ) is not None:
+    boot_size = int( value_map[ 'boot_size' ] )
+  else:
+    boot_size = 512
 
   default_mounting_options = []
   try:
-    if value_map[ 'default_mounting_options' ] and value_map[ 'default_mounting_options' ] != 'defaults':
+    if value_map.get( 'default_mounting_options', None ) is not None and value_map[ 'default_mounting_options' ] != 'defaults':
       default_mounting_options = value_map[ 'default_mounting_options' ].split( ',' )
   except KeyError:
     pass
 
   scheme = 'single'
   try:
-    if value_map[ 'partition_scheme' ]:
+    if value_map.get( 'partition_scheme', None ) is not None:
       scheme = value_map[ 'partition_scheme' ]
   except KeyError:
     pass
@@ -461,8 +459,7 @@ def partition( profile, value_map ):
   # { 'ref_size': [ swap | boot ], 'lambda': < lambda takes a dict returns a number, sizes in the dict update as it goes > }
   for item in [ i for i in recipe if 'ref_size' in i ]:
     sizes = { 'swap': swap_size, 'boot': boot_size, 'boot_rsvd': boot_rsvd_size }
-    if 'lambda' in item:
-      tmp = item[ 'lambda' ]( sizes )
+    tmp = item[ 'lambda' ]( sizes )
 
     if item[ 'ref_size' ] == 'boot':
       boot_size = tmp
@@ -508,7 +505,7 @@ def partition( profile, value_map ):
     try:
       part_type = item[ 'type' ]
     except KeyError:
-      if item[ 'mount_point' ] == '/boot':
+      if item.get( 'mount_point', None ) == '/boot':
         part_type = boot_fs_type
       else:
         part_type = fs_type
@@ -603,8 +600,13 @@ def partition( profile, value_map ):
 
     block_device = _addRAID( int( item[ 'md' ] ), block_list, int( item[ 'level' ] ), meta_version )
 
+    try:
+      priority = int( item[ 'priority' ] )
+    except KeyError:
+      priority = 0
+
     if part_type == 'swap':
-        filesystem_list.append( { 'type': 'swap', 'priority': priority, 'block_device': block_device, 'mkfs_options': mkfs_options } )
+      filesystem_list.append( { 'type': 'swap', 'priority': priority, 'block_device': block_device, 'mkfs_options': mkfs_options } )
 
     elif part_type == 'bcache':
       if item[ 'as' ] == 'cache':
@@ -637,6 +639,11 @@ def partition( profile, value_map ):
       mkfs_options = profile.get( 'filesystem', 'mkfs_{0}_options'.format( part_type ), fallback='' )
 
     block_device = _addBCache( int( item[ 'bcache' ] ), bcache_backing_list[ int( item[ 'bcache' ] ) ], bcache_cache_list[ int( item[ 'bcache' ] ) ], item.get( 'mode', None ) )
+
+    try:
+      priority = int( item[ 'priority' ] )
+    except KeyError:
+      priority = 0
 
     if part_type == 'swap':
       filesystem_list.append( { 'type': 'swap', 'priority': priority, 'block_device': block_device, 'mkfs_options': mkfs_options } )
@@ -706,10 +713,10 @@ def partition( profile, value_map ):
       except KeyError:
         mount_options = list( default_mounting_options )
 
-    try:
-      mkfs_options = '{0} {1}'.format( profile.get( 'filesystem', 'mkfs_{0}_options'.format( part_type ), fallback='' ), item[ 'mkfs_options' ] )
-    except KeyError:
-      mkfs_options = profile.get( 'filesystem', 'mkfs_{0}_options'.format( part_type ), fallback='' )
+      try:
+        mkfs_options = '{0} {1}'.format( profile.get( 'filesystem', 'mkfs_{0}_options'.format( part_type ), fallback='' ), item[ 'mkfs_options' ] )
+      except KeyError:
+        mkfs_options = profile.get( 'filesystem', 'mkfs_{0}_options'.format( part_type ), fallback='' )
 
       block_device = '/dev/mapper/{0}-{1}'.format( vg_names[ vg ], item[ 'name' ] )
 
@@ -720,14 +727,19 @@ def partition( profile, value_map ):
       for drive in vg_disks[ vg ]:
         supportsTrim &= drive.supportsTrim
 
+      try:
+        priority = int( item[ 'priority' ] )
+      except KeyError:
+        priority = 0
+
       if part_type == 'swap':
-          filesystem_list.append( { 'type': 'swap', 'priority': priority, 'block_device': block_device, 'mkfs_options': mkfs_options } )
+        filesystem_list.append( { 'type': 'swap', 'priority': priority, 'block_device': block_device, 'mkfs_options': mkfs_options } )
 
       else:
         if supportsTrim and part_type in FS_WITH_TRIM:
           mount_options.append( 'discard' )
 
-        filesystem_list.append( { 'mount_point': item[ 'mount_point' ], 'type': fs_type, 'mount_options': mount_options, 'block_device': block_device, 'mkfs_options': mkfs_options } )
+        filesystem_list.append( { 'mount_point': item[ 'mount_point' ], 'type': part_type, 'mount_options': mount_options, 'block_device': block_device, 'mkfs_options': mkfs_options } )
 
   for fs in filesystem_list:
     try:
@@ -739,8 +751,11 @@ def partition( profile, value_map ):
   if md_list:  # wait till the drives have synced to at least 2% or 10 min.
     print( 'Letting the MD RAID(s) Sync...' )
     start_at = time.time()
-    open( '/proc/sys/dev/raid/speed_limit_min', 'w' ).write( '500000000' )
-    open( '/proc/sys/dev/raid/speed_limit_max', 'w' ).write( '500000000' )
+    with open( '/proc/sys/dev/raid/speed_limit_min', 'w' ) as speed_limit_min:
+      speed_limit_min.write( '500000000' )
+    with open( '/proc/sys/dev/raid/speed_limit_max', 'w' ) as speed_limit_max:
+      speed_limit_max.write( '500000000' )
+
     perc_list = _mdSyncPercentange()  # this is empty if all the RAIDs are synced
     while perc_list and min( perc_list ) < 0.5:
       if time.time() - 300 > start_at:
@@ -750,7 +765,8 @@ def partition( profile, value_map ):
       time.sleep( 30 )
       perc_list = _mdSyncPercentange()
 
-    open( '/proc/sys/dev/raid/speed_limit_min', 'w' ).write( '2000' )
+    with open( '/proc/sys/dev/raid/speed_limit_min', 'w' ) as speed_limit_min:
+      speed_limit_min.write( '2000' )
 
 
 def mkfs():
@@ -759,16 +775,14 @@ def mkfs():
       print( 'Making Filesystem "{0}" on "{1}"...'.format( fs[ 'type' ], fs[ 'block_device' ] ) )
       execute( mkfs_map[ fs[ 'type' ] ].format( **fs ) )
       for line in execute_lines( '/sbin/blkid -o export {0}'.format( fs[ 'block_device' ] ) ):
-        part_list = line.split( ' ' )
-        for part in part_list:
+        for token in shlex.split( line ):
           try:
-            ( key, value ) = part.split( '=' )
+            ( key, value ) = token.split( '=', 1 )
           except ValueError:
             continue
 
           if key == 'UUID':
             fs[ 'uuid' ] = value
-            break
 
 
 def _mount( mount_point, fstype, fs, options=[] ):
@@ -829,9 +843,10 @@ def mount( mount_point, profile ):
 
 def remount():
   mounted = []
-  for line in open( '/proc/mounts', 'r' ).readlines():
-    ( _, point, _, _, _, _ ) = line.split( ' ' )
-    mounted.append( point )
+  with open( '/proc/mounts', 'r' ) as mounts:
+    for line in mounts.readlines():
+      ( _, point, _, _, _, _ ) = line.split( ' ' )
+      mounted.append( point )
 
   for mount in mount_list:
     if mount[0] not in mounted:
@@ -887,24 +902,22 @@ def writefstab( mount_point, profile ):
   if not os.path.isdir( os.path.join( mount_point, 'etc' ) ):
     os.makedirs( os.path.join( mount_point, 'etc' ) )
 
-  tmp = open( os.path.join( mount_point, 'etc', 'fstab' ), 'w' )
-  for item in profile.items( 'fstab' ):
-    if item[0].startswith( 'prefix_' ):
-      tmp.write( item[1] )
-      tmp.write( '\n' )
+  with open( os.path.join( mount_point, 'etc', 'fstab' ), 'w' ) as mount_mount:
+    for item in profile.items( 'fstab' ):
+      if item[0].startswith( 'prefix_' ):
+        mount_mount.write( item[1] )
+        mount_mount.write( '\n' )
 
-  for fs in filesystem_list:
-    if fs[ 'type' ] == 'swap':
-      tmp.write( 'UUID={0}\tnone\tswap\tsw,pri={1}\t0\t0\n'.format( fs[ 'uuid' ], fs[ 'priority' ] ) )
+    for fs in filesystem_list:
+      if fs[ 'type' ] == 'swap':
+        mount_mount.write( 'UUID={0}\tnone\tswap\tsw,pri={1}\t0\t0\n'.format( fs[ 'uuid' ], fs[ 'priority' ] ) )
 
-  for mount in mount_order:
-    mount_options = ','.join( mount_points[ mount ][ 'mount_options' ] )
-    if not mount_options:
-      mount_options = 'defaults'
+    for mount in mount_order:
+      mount_options = ','.join( mount_points[ mount ][ 'mount_options' ] )
+      if not mount_options:
+        mount_options = 'defaults'
 
-    tmp.write( 'UUID={0}\t{1}\t{2}\t{3}\t0\t{4}\n'.format( mount_points[ mount ][ 'uuid' ], mount_points[ mount ][ 'mount_point' ], mount_points[ mount ][ 'type' ], mount_options, 1 if mount_points[ mount ][ 'mount_point' ] == '/' else 2 ) )
-
-  tmp.close()
+      mount_mount.write( 'UUID={0}\t{1}\t{2}\t{3}\t0\t{4}\n'.format( mount_points[ mount ][ 'uuid' ], mount_points[ mount ][ 'mount_point' ], mount_points[ mount ][ 'type' ], mount_options, 1 if mount_points[ mount ][ 'mount_point' ] == '/' else 2 ) )
 
 
 def fsConfigValues():
@@ -966,17 +979,15 @@ def grubConfigValues( mount_point ):
 
 def installFilesystemUtils( profile ):
   fs_list = []
-  mounts = open( '/proc/mounts', 'r' )
-  for line in mounts.readlines():
-    try:
-      fs = line.split( ' ' )[ 2 ]
-    except IndexError:
-      continue
+  with open( '/proc/mounts', 'r' ) as mounts:
+    for line in mounts.readlines():
+      try:
+        fs = line.split( ' ' )[ 2 ]
+      except IndexError:
+        continue
 
-    if fs not in fs_list:
-      fs_list.append( fs )
-
-  mounts.close()
+      if fs not in fs_list:
+        fs_list.append( fs )
 
   for fs in fs_list:
     try:

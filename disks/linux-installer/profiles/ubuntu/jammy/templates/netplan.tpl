@@ -60,8 +60,10 @@ network:
       {%- endif -%}
       {%- if interface.address_list %}
         {%- if interface.address_list[0].address == 'dhcp' %}
-      dhcp4: yes
-      dhcp6: no
+      dhcp4: true
+      dhcp6: false
+      link-local: []
+      accept-ra: false
         {%- else -%}
           {%- set addr_loop_ns = namespace( has_primary=false ) -%}
           {%- set route_list = [] -%}
@@ -80,8 +82,10 @@ network:
             {%- endfor -%}
           {%- endif -%}
           {%- set has_primary = addr_loop_ns.has_primary %}
-      dhcp4: no
-      dhcp6: no
+      dhcp4: false
+      dhcp6: false
+      link-local: []
+      accept-ra: false
       addresses: [ {% for tmpaddr in interface.address_list %}{{ tmpaddr.address }}/{{ tmpaddr.prefix }} {% endfor %} ]
           {%- if has_primary -%}
             {%- if default_gateway %}
@@ -119,8 +123,10 @@ network:
           {%- endif -%}
         {%- endif -%}
       {%- else %}
-      dhcp4: no
-      dhcp6: no
+      dhcp4: false
+      dhcp6: false
+      link-local: []
+      accept-ra: false
       {%- endif -%}
     {%- endif -%}
   {%- endfor %}

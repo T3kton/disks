@@ -41,7 +41,7 @@ def bootstrap( mount_point, source, profile ):  # TODO: bootstrap http proxy, al
     execute( '/bin/wget -O {0}/bootstrap.img {1}{2}'.format( mount_point, repo_root, image ) )
 
     print( 'Extractig image...' )
-    file_list = execute_lines( '/bin/unsquashfs -d . -ls {0}/bootstrap.img'.format( mount_point ) )
+    file_list = execute_lines( '/bin/unsquashfs -l {0}/bootstrap.img'.format( mount_point ) )
     execute( '/bin/unsquashfs -f -d {0} {0}/bootstrap.img'.format( mount_point ) )
     os.unlink( '{0}/bootstrap.img'.format( mount_point ) )
 
@@ -62,17 +62,18 @@ def bootstrap( mount_point, source, profile ):  # TODO: bootstrap http proxy, al
     release_match = re.compile( r'"(centos-release-[^"]*\.rpm)"' )
     yum_filename = None
     release_filename = None
-    for line in open( '/tmp/pkglist', 'r' ).readlines():
-      tmp = yum_match.search( line )
-      if tmp:
-        yum_filename = tmp.group( 1 )
+    with open( '/tmp/pkglist', 'r' ) as pkglist:
+      for line in pkglist.readlines():
+        tmp = yum_match.search( line )
+        if tmp:
+          yum_filename = tmp.group( 1 )
 
-      tmp = release_match.search( line )
-      if tmp:
-        release_filename = tmp.group( 1 )
+        tmp = release_match.search( line )
+        if tmp:
+          release_filename = tmp.group( 1 )
 
-      if release_filename and yum_filename:
-        break
+        if release_filename and yum_filename:
+          break
 
     execute( 'rm /tmp/pkglist' )  # if there are more packages installed here, make sure to update the list in packaging.py - installBase
     print( '   YUM rpm filename "{0}"'.format( yum_filename ) )

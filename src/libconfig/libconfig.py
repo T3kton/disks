@@ -1,9 +1,9 @@
 import sqlite3
-import pickle
-import base64
+import json
 import os
 import hashlib
 import pwd
+import grp
 from datetime import datetime, timezone
 from dateutil import parser as datetimeparser
 from libconfig.jinja2 import FileSystemLoader, Environment, nodes, TemplateSyntaxError
@@ -12,6 +12,11 @@ from libconfig.jinja2.ext import Extension, do as do_ext
 
 def unique_list( value ):
   return set( value )
+
+
+def _hash_file( filename ):
+  with open( filename, 'r' ) as f:
+    return hashlib.sha256( f.read().encode() ).hexdigest()
 
 # Thought: what if there was a way to make sure a value is presnt, and if missing cause an error
 # mabey a {% required myvalue, myothervalue %} type thing, otherwise all templates will have to
@@ -22,9 +27,9 @@ class TargetWriter( Extension ):
   tags = set( [ 'target' ] )
 
   def __init__( self, environment ):
-    super( TargetWriter, self ).__init__( environment )
-    environment.globals[ '_target_list' ] = []
-    environment.globals[ '_root_dir' ] = ''
+    super().__init__( environment )
+    self.environment.globals[ '_target_list' ] = []
+    self.environment.globals[ '_root_dir' ] = ''
 
   def parse( self, parser ):
     lineno = next( parser.stream ).lineno
@@ -56,7 +61,7 @@ class TargetWriter( Extension ):
     try:
       file_group = int( group )
     except ValueError:
-      file_group = pwd.getpwnam( group ).pw_uid
+      file_group = grp.getgrnam( group ).gr_gid
 
     self.environment.globals[ '_target_list' ].append( str( filename ) )
     if not self.environment.globals[ '_dry_run' ]:
@@ -65,9 +70,8 @@ class TargetWriter( Extension ):
       if not os.path.exists( os.path.dirname( target_file ) ):
         os.makedirs( os.path.dirname( target_file ), mode=( file_mode | ( ( file_mode & 0o444 ) >> 2 ) ) )  # copy the read bits and shift them over to exec
 
-      fd = open( target_file, 'w' )
-      fd.write( caller() )
-      fd.close()
+      with open( target_file, 'w' ) as fd:
+        fd.write( caller() )
 
       if os.getuid() == 0:
         os.chown( target_file, file_owner, file_group )
@@ -89,8 +93,12 @@ class Config():
     self.conn = sqlite3.connect( config_db, detect_types=sqlite3.PARSE_DECLTYPES )
     self._checkDB( self.conn )
 
-  def __del__( self ):
+  def __enter__( self ):
+    return self
+
+  def __exit__( self, exc_type, exc_val, exc_tb ):
     self.conn.close()
+    return False
 
   # utility functions
   def _checkDB( self, conn ):
@@ -107,6 +115,7 @@ class Config():
       conn.commit()
       conn.execute( 'INSERT INTO "control" ( "id", "version" ) VALUES ( 0, 0 );' )
       conn.commit()
+    cur.close()
 
     cur = conn.cursor()
     cur.execute( 'SELECT "version" FROM "control";' )
@@ -139,7 +148,7 @@ class Config():
         "package" char(50) NOT NULL,
         "template" char(50) NOT NULL,
         "target" char(200),
-        "targetHash" char(40),
+        "targetHash" char(64),
         "lastChecked" timestamp,
         "lastBuilt" timestamp,
         "created" timestamp DEFAULT CURRENT_TIMESTAMP,
@@ -151,7 +160,7 @@ class Config():
       conn.execute( """CREATE TABLE "templates" (
         "package" char(50) NOT NULL,
         "template" char(50) NOT NULL,
-        "templateHash" char(40),
+        "templateHash" char(64),
         "lastChecked" timestamp,
         "lastBuilt" timestamp,
         "created" timestamp DEFAULT CURRENT_TIMESTAMP,
@@ -161,15 +170,16 @@ class Config():
       conn.commit()
       conn.execute( 'UPDATE "control" SET "version" = 1, "modified" = CURRENT_TIMESTAMP;' )
       conn.commit()
+    cur.close()
 
   def updateCacheFromContractor( self ):
-    new_values, last_modified = self._getContractorValues()
+    new_values, last_modified = self.getContractorValues()
 
     values = self.getValues( no_extra=True )
     for name in new_values:
-      value = base64.b64encode( pickle.dumps( new_values[ name ], pickle.HIGHEST_PROTOCOL ) )
+      value = json.dumps( new_values[ name ] )
       try:
-        if values[ name ] != value:
+        if values[ name ] != new_values[ name ]:
           self.conn.execute( 'UPDATE "value_cache" SET "value" = ?, "modified" = CURRENT_TIMESTAMP WHERE "name" = ?;', ( value, name ) )
       except KeyError:
         self.conn.execute( 'INSERT INTO "value_cache" ( "name", "value" ) VALUES ( ?, ? );', ( name, value ) )
@@ -200,7 +210,7 @@ class Config():
   def _getTemplates( self, package ):
     result = {}
     cur = self.conn.cursor()
-    cur.execute( 'SELECT "template", "templateHash" FROM "templates" WHERE package = "{0}" ORDER BY template;'.format( package ) )
+    cur.execute( 'SELECT "template", "templateHash" FROM "templates" WHERE package = ? ORDER BY template;', ( package, ) )
     for ( template, template_hash ) in cur.fetchall():
       result[ template ] = { 'hash': template_hash }
 
@@ -211,7 +221,7 @@ class Config():
   def _getTargets( self, package, template ):
     result = {}
     cur = self.conn.cursor()
-    cur.execute( 'SELECT "target", "targethash", "lastChecked", "lastBuilt" FROM "targets" WHERE package = "{0}" AND template = "{1}" ORDER BY target;'.format( package, template ) )
+    cur.execute( 'SELECT "target", "targethash", "lastChecked", "lastBuilt" FROM "targets" WHERE package = ? AND template = ? ORDER BY target;', ( package, template ) )
     for ( target, target_hash, checked, built ) in cur.fetchall():
       result[ target ] = { 'hash': target_hash, 'last_checked': checked, 'last_built': built }
 
@@ -220,26 +230,26 @@ class Config():
     return result
 
   def _renderTemplate( self, package, value_map, template, root_dir ):
-    eng = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
-    eng.filters[ 'unique_list' ] = unique_list
-    eng.globals.update( _dry_run=False )
-    eng.globals.update( _root_dir=os.path.join( self.root_dir, root_dir ) )
-    tmpl = eng.get_template( '{0}.tpl'.format( template ) )
+    env = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
+    env.filters[ 'unique_list' ] = unique_list
+    env.globals.update( _dry_run=False )
+    env.globals.update( _root_dir=os.path.join( self.root_dir, root_dir ) )
+    tmpl = env.get_template( '{0}.tpl'.format( template ) )
     tmpl.render( value_map )
-    return eng.globals[ '_target_list' ]
+    return env.globals[ '_target_list' ]
 
   def _targetFiles( self, package, value_map, template ):
-    eng = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
-    eng.filters[ 'unique_list' ] = unique_list
-    eng.globals.update( _dry_run=True )
+    env = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
+    env.filters[ 'unique_list' ] = unique_list
+    env.globals.update( _dry_run=True )
     try:
-      tmpl = eng.get_template( '{0}.tpl'.format( template ) )
+      tmpl = env.get_template( '{0}.tpl'.format( template ) )
     except TemplateSyntaxError as e:
       raise ValueError( 'Error paring template: "{0}" on line {1} in "{2}"'.format( e.message, e.lineno, e.filename ) )
     tmpl.render( value_map )
-    return eng.globals[ '_target_list' ]
+    return env.globals[ '_target_list' ]
 
-  def _getContractorValues( self ):
+  def getContractorValues( self ):
     values = self.contractor.getConfig()
     if not values:
       raise Exception( 'Contractor returned empty config' )
@@ -255,7 +265,10 @@ class Config():
 
     self.contractor.config_uuid = values[ '_structure_config_uuid' ]
 
-    return values, datetimeparser.parse( values[ '__last_modified' ] )
+    try:
+      return values, datetimeparser.parse( values[ '__last_modified' ] )
+    except KeyError:
+      raise Exception( '__last_modified missing from values' )
 
   def setOverlayValues( self, values ):
     self.extra_values.update( values )
@@ -264,8 +277,8 @@ class Config():
     return self._getPackageTemplates( package )
 
   def getTargetFiles( self, package, template, value_map=None ):
-    if not value_map:
-      value_map = self.getCache()
+    if value_map is None:
+      value_map = self.getValues()
 
     return self._targetFiles( package, value_map, template )
 
@@ -274,7 +287,7 @@ class Config():
     cur = self.conn.cursor()
     cur.execute( 'SELECT "name", "value" FROM "value_cache";' )
     for ( name, value ) in cur.fetchall():
-      result[ name ] = pickle.loads( base64.b64decode( value ) )
+      result[ name ] = json.loads( value )
 
     cur.close()
 
@@ -308,7 +321,7 @@ class Config():
       target_db_list = self._getTargets( package, template )
 
       template_file = os.path.join( package_dir, '{0}.tpl'.format( template ) )
-      template_hash = hashlib.sha1( open( template_file, 'r' ).read().encode() ).hexdigest()
+      template_hash = _hash_file( template_file )
 
       for target in target_list:
         target_file = os.path.join( self.root_dir, target )
@@ -325,7 +338,7 @@ class Config():
 
         else:
           if os.path.isfile( target_file ):
-            target_hash = hashlib.sha1( open( target_file, 'r' ).read().encode() ).hexdigest()
+            target_hash = _hash_file( target_file )
 
             if target_db_list[ target ][ 'hash' ] != target_hash:
               tmp[ 'localmod' ] = 'Yes'
@@ -402,7 +415,7 @@ class Config():
         print( 'Template "{0}" for package "{1}" is not found, skipped...'.format( template, package ) )
         continue
 
-      template_hash = hashlib.sha1( open( template_file, 'r' ).read().encode() ).hexdigest()
+      template_hash = _hash_file( template_file )
 
       target_list = self._targetFiles( package, value_map, template )
       target_db_list = self._getTargets( package, template )
@@ -417,7 +430,7 @@ class Config():
           target_file = os.path.join( self.root_dir, *( target.split( '/' ) ) )
 
         if os.path.isfile( target_file ):
-          target_hash = hashlib.sha1( open( target_file, 'r' ).read().encode() ).hexdigest()
+          target_hash = _hash_file( target_file )
         else:
           target_hash = None
 
@@ -505,7 +518,7 @@ class Config():
         self.conn.execute( 'INSERT INTO "templates" ( "templatehash", "package", "template", "lastChecked", "lastBuilt" ) VALUES ( ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP );', ( template_hash, package, template ) )
 
       for target in target_list:
-        target_hash = hashlib.sha1( open( os.path.join( self.root_dir, *( target.split( '/' ) ) ), 'r' ).read().encode() ).hexdigest()
+        target_hash = _hash_file( os.path.join( self.root_dir, *( target.split( '/' ) ) ) )
 
         if template in template_db_list:
           self.conn.execute( 'UPDATE "targets" SET "lastChecked" = CURRENT_TIMESTAMP, "targethash" = ?, "lastBuilt" = CURRENT_TIMESTAMP, "modified" = CURRENT_TIMESTAMP WHERE "package" = ? AND "template" = ? AND "target" = ?;', ( target_hash, package, template, target ) )

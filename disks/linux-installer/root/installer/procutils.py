@@ -96,9 +96,9 @@ def execute_lines( cmd, stdin=None, retry_rc_list=None ):
 
 
 def chroot_execute( cmd, stdin=None, retry_rc_list=None ):
-  _execute( '/sbin/chroot {0} {1}'.format( chroot_path, cmd ), debug_stdout, debug_stdout, stdin, global_env, retry_rc_list )
+  _execute( '/sbin/chroot {0} {1}'.format( chroot_path, cmd ), debug_stdout, debug_stdout, stdin, chroot_env, retry_rc_list )
 
 
 def chroot_execute_lines( cmd, stdin=None, retry_rc_list=None ):
-  stdout = _execute( '/sbin/chroot {0} {1}'.format( chroot_path, cmd ), subprocess.PIPE, debug_stdout, stdin, global_env, retry_rc_list )
+  stdout = _execute( '/sbin/chroot {0} {1}'.format( chroot_path, cmd ), subprocess.PIPE, debug_stdout, stdin, chroot_env, retry_rc_list )
   return stdout.splitlines()

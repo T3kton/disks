@@ -16,7 +16,7 @@ def configSources( install_root, profile, value_map ):
     raise Exception( 'Unknwon Packaging manager type "{0}"'.format( manager_type ) )
 
   if manager_type == 'yum':
-    execute( 'ash -c "rm {0}/etc/yum.repos.d/*"'.format( install_root ) )
+    execute( 'sh -c "rm {0}/etc/yum.repos.d/*"'.format( install_root ) )
 
   key_uris = []
   for repo in value_map[ 'repo_list' ]:
@@ -28,7 +28,7 @@ def configSources( install_root, profile, value_map ):
       if uri not in key_uris:
         try:
           proxy = repo[ 'proxy' ]
-        except Exception:
+        except KeyError:
           proxy = None
 
         tmp = http_getfile( uri, proxy=proxy )
@@ -38,7 +38,8 @@ def configSources( install_root, profile, value_map ):
           if not os.path.isdir( os.path.dirname( key_file_path ) ):
             os.makedirs( os.path.dirname( key_file_path ) )
 
-          open( key_file_path, 'wb' ).write( tmp )
+          with open( key_file_path, 'wb' ) as key_file:
+            key_file.write( tmp )
 
         elif manager_type == 'apt':  # for binary keys, write it to a file ^
           chroot_execute( '/usr/bin/apt-key add -', tmp.decode() )
@@ -66,7 +67,7 @@ def installBase( install_root, profile ):
   elif manager_type == 'yum':
     chroot_execute( '/usr/bin/yum -y groupinstall {0}'.format( base_package ) )
     chroot_execute( '/usr/bin/yum -y reinstall yum centos-release' )  # find a better way to figure out what needs to be re-installed
-    execute( 'ash -c "rm {0}/etc/yum.repos.d/*"'.format( install_root ) )  # clean up extra repos that some package might have left behind... this is the last time we will do this.... any package after this we will allow to keep their repos, we are really just after the base ones
+    execute( 'sh -c "rm {0}/etc/yum.repos.d/*"'.format( install_root ) )  # clean up extra repos that some package might have left behind... this is the last time we will do this.... any package after this we will allow to keep their repos, we are really just after the base ones
     renderTemplates( profile.get( 'packaging', 'source_templates' ).split( ',' ) )
 
   elif manager_type == 'zypper':
@@ -89,7 +90,7 @@ def installOtherPackages( profile, value_map ):
     elif parts[0] == manager_type:
       tmp.append( parts[1] )
 
-  if package_list:
+  if tmp:
     installPackages( ' '.join( tmp ) )
 
 

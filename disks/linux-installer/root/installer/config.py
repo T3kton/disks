@@ -1,11 +1,11 @@
 import os
+import shlex
 import configparser
 from io import StringIO
 from configparser import NoOptionError
 from installer.procutils import chroot_execute
 from libconfig.libconfig import Config
 from libconfig.jinja2 import FileSystemLoader, Environment
-from contractor.client import getClient
 
 config = None
 template = None
@@ -13,10 +13,8 @@ template = None
 config_values = { '_installer': {} }
 
 
-def initConfig( install_root, template_path, profile_path ):
+def initConfig( install_root, template_path, profile_path, contractor ):
   global config, template
-
-  contractor = getClient()
 
   config = Config( contractor, template_path, ':memory:', install_root )
   config.updateCacheFromContractor()
@@ -43,11 +41,10 @@ def getProfile():
 
 
 def writeShellHelper():
-  config_data = open( '/target/config_data', 'w' )
-  values = config.getValues()
-  for value in values:
-    config_data.write( '{0}=\'{1}\'\n'.format( value, str( values[ value ] ).replace( "'", "'\"'\"'" ) ) )  # TODO: use shlex.quote(s) when it's aviable
-  config_data.close()
+  with open( '/target/config_data', 'w' ) as config_data:
+    values = config.getValues()
+    for value in values:
+      config_data.write( '{0}=\'{1}\'\n'.format( value, shlex.quote( str( values[ value ] ) ) ) )
 
 
 def updateConfig( category, newvals ):
