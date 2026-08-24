@@ -103,19 +103,13 @@ def main( contractor ):
 
     network.update( platform.getNetwork() )
 
-    for iface in lldp:
-      if iface not in network:
-        continue
-
-      network[ iface ][ 'lldp' ] = lldp[ iface ]
-
     if primary_iface not in network:
       network[ primary_iface ] = {}
 
     network[ primary_iface ][ 'primary' ] = True
 
     print( 'Getting Disk Information...' )
-    disks = []
+    disks = {}
     for drive in dm.drive_list:
       try:
         item = drive.reporting_info
@@ -128,7 +122,7 @@ def main( contractor ):
       item[ 'pcipath' ] = drive.pcipath
       item[ 'isSSD' ] = drive.isSSD
       item[ 'isVirtualDisk' ] = drive.isVirtualDisk
-      disks.append( item )
+      disks[ drive.location ] = item
       drive.setFault( False )
 
     # 'Getting SCSI/Disk Enclosure Information...'

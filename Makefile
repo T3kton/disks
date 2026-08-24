@@ -249,7 +249,7 @@ respkg-blueprints:
 	echo ubuntu-focal-large
 
 respkg-requires:
-	echo respkg fakeroot bc gperf python3-dev python3-setuptools pkg-config gettext python3-pip bison flex gawk netpbm caca-utils locales
+	echo respkg fakeroot bc gperf python3-dev python3-setuptools pkg-config gettext python3-pip bison flex gawk netpbm caca-utils locales debootstrap fakechroot
 ifeq ($(ARCH),x86_64)
 	echo build-essential
 endif

@@ -1,6 +1,6 @@
 #!/bin/sh
-#SOURCE: https://www.python.org/ftp/python/3.12.9/Python-3.12.9.tar.xz
-#HASH: 465d8a664e63dc5aa1f0d90cd1d0000a970ee2fb
+#SOURCE: https://www.python.org/ftp/python/3.14.6/Python-3.14.6.tar.xz
+#HASH: 064b06388d8911f337a023badc7c34a199787a25
 
 set -e
 #set -x
