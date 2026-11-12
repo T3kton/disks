@@ -6,4 +6,15 @@ PS1='\[\033[1;37m\][{{ _site }}] \[\033[01;32m\]\u\[\033[01;34m\]@\[\033[01;31m\
 {% else %}
 PS1='\[\033[1;37m\]\[\033[01;32m\]\u\[\033[01;34m\]@\[\033[01;31m\]\h\[\033[00;34m\]{\[\033[01;34m\]\w\[\033[00;34m\]}\[\033[01;32m\]:\[\033[00m\]\$ '
 {% endif %}
+
+{% if http_proxy %}
+HTTP_PROXY={{ http_proxy }}
+HTTPS_PROXY={{ http_proxy }}
+http_proxy={{ http_proxy }}
+https_proxy={{ http_proxy }}
+{% endif %}
+{% if no_proxy %}
+NO_PROXY={{ no_proxy }}
+no_proxy={{ no_proxy }}
+{% endif %}
 {% endtarget %}

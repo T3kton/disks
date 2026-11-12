@@ -21,6 +21,7 @@ version=7
 
 [packaging]
 manager_type=yum
+key_file_location=/etc/pki/rpm-gpg/
 prebase_templates=
 base=Base
 packages=dhclient

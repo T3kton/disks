@@ -16,5 +16,6 @@ contractor/linux-installer-profiles
 __pycache__
 
 external/*
+config-curator_*
 
 .vscode

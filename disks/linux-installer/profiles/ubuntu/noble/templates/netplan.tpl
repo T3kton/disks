@@ -39,9 +39,9 @@ network:
       {%- endif %}
       {%- if loop_type == 'bonds' %}
       interfaces: [ {{ ', '.join( [ interface.primary ] + interface.secondary ) }} ]
-        {%- if interface.paramaters %}
+        {%- if interface.parameters %}
       parameters:
-          {%- for key, value in interface.paramaters.items() %}
+          {%- for key, value in interface.parameters.items() %}
         {{ key }}: {{ value }}
           {%- endfor %}
         {%- endif %}
@@ -51,8 +51,10 @@ network:
       {%- endif -%}
       {%- if interface.address_list %}
         {%- if interface.address_list[0].address == 'dhcp' %}
-      dhcp4: yes
-      dhcp6: no
+      dhcp4: true
+      dhcp6: false
+      link-local: []
+      accept-ra: false
         {%- else -%}
           {%- set addr_loop_ns = namespace( has_primary=false ) -%}
           {%- set route_list = [] -%}
@@ -62,8 +64,10 @@ network:
             {%- if tmpaddr.gateway %}{% do route_list.append( dict( route='0.0.0.0/0', gateway=tmpaddr.gateway ) ) %}{% endif -%}
           {%- endfor -%}
           {%- set has_primary = addr_loop_ns.has_primary %}
-      dhcp4: no
-      dhcp6: no
+      dhcp4: false
+      dhcp6: false
+      link-local: []
+      accept-ra: false
       addresses: [ {% for tmpaddr in interface.address_list %}{{ tmpaddr.address }}/{{ tmpaddr.prefix }} {% endfor %} ]
           {% if route_list %}
       routes:
@@ -82,8 +86,10 @@ network:
           {%- endif -%}
         {%- endif -%}
       {%- else %}
-      dhcp4: no
-      dhcp6: no
+      dhcp4: false
+      dhcp6: false
+      link-local: []
+      accept-ra: false
       {%- endif -%}
     {%- endif -%}
   {%- endfor %}

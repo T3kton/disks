@@ -4,27 +4,26 @@ import os
 import json
 from contractor.client import getClient
 
-contractor = getClient()
+with getClient() as contractor:
+  contractor_config = contractor.getConfig()
 
-contractor_config = contractor.getConfig()
+  disk_name = None
+  try:
+    disk_name = open( '/etc/disk_name', 'r' ).read().strip()
+  except FileNotFoundError:
+    pass
 
-disk_name = None
-try:
-  disk_name = open( '/etc/disk_name', 'r' ).read().strip()
-except FileNotFoundError:
-  pass
+  job_id = os.environ.get( 'job_id', None )
 
-job_id = os.environ.get( 'job_id', None )
+  config = {}
+  config[ 'job' ] = {
+                      'job_id': job_id,
+                      'pxe_name': disk_name,
+                      'cookie': '{0}({1})'.format( job_id, disk_name )
+                    }
 
-config = {}
-config[ 'job' ] = {
-                    'job_id': job_id,
-                    'pxe_name': disk_name,
-                    'cookie': '{0}({1})'.format( job_id, disk_name )
-                  }
+  config[ 'config' ] = contractor_config
 
-config[ 'config' ] = contractor_config
+  open( '/etc/job.config', 'w' ).write( json.dumps( config, indent=2 ) )
 
-open( '/etc/job.config', 'w' ).write( json.dumps( config, indent=2 ) )
-
-open( '/config', 'w' ).write( contractor.getDiskTemplate() )
+  open( '/config', 'w' ).write( contractor.getDiskTemplate() )

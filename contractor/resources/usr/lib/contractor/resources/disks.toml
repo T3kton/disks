@@ -17,9 +17,9 @@
   distro = 'ubuntu'
   repo_components = [ 'main' ]
   '>repo_list' = [
-    { distribution = '{{ distro_version }}', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], proxy = '{{ http_proxy|default( "local" ) }}' },
-    { distribution = '{{ distro_version }}-updates', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], proxy = '{{ http_proxy|default( "local" ) }}' },
-    { distribution = '{{ distro_version }}-security', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], proxy = '{{ http_proxy|default( "local" ) }}' }
+    { distribution = '{{ distro_version }}', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], key_file = 'ubuntu-archive-keyring.gpg', proxy = '{{ http_proxy|default( "local" ) }}' },
+    { distribution = '{{ distro_version }}-updates', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], key_file = 'ubuntu-archive-keyring.gpg', proxy = '{{ http_proxy|default( "local" ) }}' },
+    { distribution = '{{ distro_version }}-security', type = 'apt', uri = 'http://{{ mirror_server }}/ubuntu/', components = [ 'main', 'universe', 'multiverse' ], key_file = 'ubuntu-archive-keyring.gpg', proxy = '{{ http_proxy|default( "local" ) }}' }
   ]
   '>package_list' = [ 'openssh-server', 'openssh-client' ]
   '>package_list:VCenter' = [ 'open-vm-tools' ]
@@ -42,7 +42,6 @@
   'awsec2_image_id:AWS' = 'ami-efd0428f'
   'docker_image:Docker' = 'ubuntu:xenial'
   'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '16.04-LTS', 'version' = 'latest' }
-  'packet_os:Packet' = 'ubuntu_16_04'
 
 [ structure.ubuntu-bionic-base ]
   description = 'Base Ubuntu Bionic Beaver (18.04 LTS)'
@@ -52,7 +51,6 @@
   azure_image = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '18.04-LTS', 'version' = 'latest' }
   'docker_image:Docker' = 'ubuntu:bionic'
   'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '18.04-LTS', 'version' = 'latest' }
-  'packet_os:Packet' = 'ubuntu_18_04'
 
 [ structure.ubuntu-focal-base ]
   description = 'Base Ubuntu Focal Fossa (20.04 LTS)'
@@ -61,7 +59,6 @@
   distro_version = 'focal'
   'docker_image:Docker' = 'ubuntu:focal'
   'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '20.04-LTS', 'version' = 'latest' }
-  'packet_os:Packet' = 'ubuntu_20_04'
 
 [ structure.ubuntu-jammy-base ]
   description = 'Base Ubuntu Jammy Jellyfish (22.04 LTS)'
@@ -70,7 +67,6 @@
   distro_version = 'jammy'
   'docker_image:Docker' = 'ubuntu:jammy'
   'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '22.04-LTS', 'version' = 'latest' }
-  'packet_os:Packet' = 'ubuntu_22_04'
 
 [ structure.ubuntu-noble-base ]
   description = 'Base Ubuntu Noble Numbat (24.04 LTS)'
@@ -79,7 +75,6 @@
   distro_version = 'noble'
   'docker_image:Docker' = 'ubuntu:noble'
   'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '24.04-LTS', 'version' = 'latest' }
-  'packet_os:Packet' = 'ubuntu_24_04'
 
 [ structure.ubuntu-noble-cloudinit-base ]
   description = 'Base Ubuntu Noble Numbat (cloudinit) (24.04 LTS)'
@@ -89,6 +84,14 @@
   profile_url = 'http://static/disks/cloudinit-noble-profile.tar.gz'
   mirror_server = 'cloud-images.ubuntu.com'
   bootstrap_source = 'http://{{mirror_server}}/noble/current/'
+
+[ structure.ubuntu-resolute-base ]
+  description = 'Base Ubuntu resolute raccoon (26.04 LTS)'
+  parents = [ 'ubuntu-base' ]
+[ structure.ubuntu-resolute-base.config_values ]
+  distro_version = 'resolute'
+  'docker_image:Docker' = 'ubuntu:resolute'
+  'azure_image:Azure' = { 'publisher' = 'Canonical', 'offer' = 'UbuntuServer', 'sku' = '26.04-LTS', 'version' = 'latest' }
 
 # Debian
 [ structure.debian-base ]
@@ -132,10 +135,10 @@
   bootstrap_source = 'https://{{ mirror_server }}/centos/'
   distro = 'centos'
   '>repo_list' = [
-    { type = 'yum', name = 'base', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/os/$basearch/', key_file = '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
-    { type = 'yum', name = 'updates', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/updates/$basearch/', key_file = '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
-    { type = 'yum', name = 'extras', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/extras/$basearch/', key_file = '/etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
-    { type = 'yum', name = 'epel', uri = 'http://download.fedoraproject.org/pub/epel/{{ distro_version }}/$basearch/', key_file = '/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-{{ distro_version }}', key_uri = 'http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' }
+    { type = 'yum', name = 'base', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/os/$basearch/', key_file = 'RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
+    { type = 'yum', name = 'updates', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/updates/$basearch/', key_file = 'RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
+    { type = 'yum', name = 'extras', uri = 'http://{{ mirror_server }}/centos-{{ distro_version }}/{{ distro_version }}/extras/$basearch/', key_file = 'RPM-GPG-KEY-CentOS-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' },
+    { type = 'yum', name = 'epel', uri = 'http://download.fedoraproject.org/pub/epel/{{ distro_version }}/$basearch/', key_file = 'RPM-GPG-KEY-EPEL-{{ distro_version }}', key_uri = 'http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ distro_version }}', proxy = '{{ http_proxy|default( "local" ) }}' }
   ]
   '>package_list' = [ 'openssh-server' ]
   '>package_list:VCenter' = [ 'open-vm-tools' ]
@@ -236,8 +239,8 @@ do
   RESOURCE_URL_LIST="$RESOURCE_URL_LIST {{ firmware_resource_location }}${resource}"
 done
 
-{% if __connection_paramaters %}
-export BMC_USERNAME='{{ __connection_paramaters[ 'credentials' ][ 'username' ] }}'
-export BMC_PASSWORD='{{ __connection_paramaters[ 'credentials' ][ 'password' ] }}'
+{% if __connection_parameters %}
+export BMC_USERNAME='{{ __connection_parameters[ 'credentials' ][ 'username' ] }}'
+export BMC_PASSWORD='{{ __connection_parameters[ 'credentials' ][ 'password' ] }}'
 {% endif %}
 '''

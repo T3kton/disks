@@ -23,6 +23,7 @@ distro=xenial
 
 [packaging]
 manager_type=apt
+key_storage=apt
 prebase_templates=timezone
 selection_1=config-curator  config-curator/config-host       string {{ config_host }}
 selection_2=config-curator  config-curator/config-proxy      string {{ config_proxy }}

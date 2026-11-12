@@ -386,7 +386,7 @@ int doSCSIWipe( struct device_handle *drive, struct drive_info *info, long long 
 
 int main( int argc, char **argv )
 {
-  // paramaters
+  // parameters
   int waitForCompletion = 1;
   int statusOnly = 0;
   int cancelOnly = 0;
@@ -673,7 +673,7 @@ int main( int argc, char **argv )
     if( chunkSize )
     {
       fprintf( stderr, "WARNING!! Chunk Size not Supported for ATA, ignoring chunksize.\n" );
-      //fprintf( stderr, "Chunk Size not Supported for ATA, bailing.\n" ); // would rather bale, but until dtest detects best paramaters, going to have to ignore it
+      //fprintf( stderr, "Chunk Size not Supported for ATA, bailing.\n" ); // would rather bale, but until dtest detects best parameters, going to have to ignore it
       //rc = 1;
     }
     //else

@@ -239,7 +239,7 @@ dist-clean: clean-deps clean-images clean-src clean-downloads respkg-clean pkg-d
 
 contractor/linux-installer-profiles.touch: $(shell find disks/linux-installer/profiles -type f -print)
 	mkdir -p  contractor/linux-installer-profiles/var/www/static/disks
-	for DISTRO in trusty xenial bionic focal jammy noble; do tar -h -czf contractor/linux-installer-profiles/var/www/static/disks/ubuntu-$$DISTRO-profile.tar.gz -C disks/linux-installer/profiles/ubuntu/$$DISTRO . ; done
+	for DISTRO in trusty xenial bionic focal jammy noble resolute; do tar -h -czf contractor/linux-installer-profiles/var/www/static/disks/ubuntu-$$DISTRO-profile.tar.gz -C disks/linux-installer/profiles/ubuntu/$$DISTRO . ; done
 	for DISTRO in buster; do tar -h -czf contractor/linux-installer-profiles/var/www/static/disks/debian-$$DISTRO-profile.tar.gz -C disks/linux-installer/profiles/debian/$$DISTRO . ; done
 	for DISTRO in 6 7; do tar -h -czf contractor/linux-installer-profiles/var/www/static/disks/centos-$$DISTRO-profile.tar.gz -C disks/linux-installer/profiles/centos/$$DISTRO . ; done
 	tar -h -czf contractor/linux-installer-profiles/var/www/static/disks/cloudinit-noble-profile.tar.gz -C disks/linux-installer/profiles/cloudinit/noble .
@@ -249,7 +249,7 @@ respkg-blueprints:
 	echo ubuntu-focal-large
 
 respkg-requires:
-	echo respkg fakeroot bc gperf python3-dev python3-setuptools pkg-config gettext python3-pip bison flex gawk netpbm caca-utils locales
+	echo respkg fakeroot bc gperf python3-dev python3-setuptools pkg-config gettext python3-pip bison flex gawk netpbm caca-utils locales debootstrap fakechroot
 ifeq ($(ARCH),x86_64)
 	echo build-essential
 endif

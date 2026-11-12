@@ -1,13 +1,14 @@
 #!/bin/sh
-#SOURCE: https://www.python.org/ftp/python/3.12.9/Python-3.12.9.tar.xz
-#HASH: 465d8a664e63dc5aa1f0d90cd1d0000a970ee2fb
+#SOURCE: https://www.python.org/ftp/python/3.14.7/Python-3.14.7.tar.xz
+#HASH: 1239d153c968b5fa1958963acd350a42b73d895b
+# when updating python, make sure to update the version number in the paths below
 
 set -e
 #set -x
 
 # we don't need everything, so only these subdirs
 # lib2to3 is there b/c the install will not work with out it, going to remove that during the install function
-SUBDIRS="re encodings serial json config ctypes logging sqlite3 collections urllib email http asyncio concurrent concurrent/futures multiprocessing multiprocessing/dummy importlib importlib/metadata importlib/resources lib2to3 time zoneinfo xml xml/dom xml/parses xml/sax xml/etree"
+SUBDIRS="re encodings serial json config ctypes logging sqlite3 collections urllib email http asyncio concurrent concurrent/futures multiprocessing multiprocessing/dummy importlib importlib/metadata importlib/resources lib2to3 time zoneinfo xml xml/dom xml/parses xml/sax xml/etree string pathlib sysconfig"
 
 build()
 {
@@ -44,9 +45,9 @@ install()
 
   ln -sf python $1/bin/python3
 
-  pip3 install --no-compile --target $1/lib/python3/ python-dateutil
+  pip3 install --no-compile --upgrade --target $1/lib/python3/ cinp python-dateutil httpcore[asyncio]
 
-  cat <<CUSTOMIZE > $1/lib/python3.12/sitecustomize.py
+  cat <<CUSTOMIZE > $1/lib/python3.14/sitecustomize.py
 import sys
 
 sys.path.append( '/lib/python3/' )
@@ -58,5 +59,5 @@ CUSTOMIZE
 binaries()
 {
   ls python
-  ls ../../pythonlib/lib/python3.12/lib-dynload/*.so
+  ls ../../pythonlib/lib/python3.14/lib-dynload/*.so
 }

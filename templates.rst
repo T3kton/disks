@@ -3,7 +3,7 @@ Making Templates
 
 The template consists of a few definitions, a list of questions, some post question processing, and then building of the config file that will be stored in `/config_file`.
 
-It is also possible to tweek the boot config file, if you do tweek the boot config file, make sure to pass `local_config` as a boot paramater, otherwise the init scripts will not read `/config_file`.
+It is also possible to tweek the boot config file, if you do tweek the boot config file, make sure to pass `local_config` as a boot parameter, otherwise the init scripts will not read `/config_file`.
 
 Definitions
 -----------

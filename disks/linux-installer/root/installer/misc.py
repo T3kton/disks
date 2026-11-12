@@ -12,7 +12,9 @@ def postInstall( install_root, profile, value_map ):
 
   if 'postinstall_script' in value_map:  # TODO: http proxy, see also bootstrap
     target_path = os.path.join( install_root, 'postinstall.sh' )
-    open( target_path, 'w' ).write( http_getfile( value_map[ 'postinstall_script' ] ) )
+    with open( target_path, 'wb' ) as target:
+      target.write( http_getfile( value_map[ 'postinstall_script' ] ) )
+
     os.chmod( target_path, os.stat( target_path ).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH )
     chroot_execute( '/postinstall.sh' )
     os.unlink( target_path )

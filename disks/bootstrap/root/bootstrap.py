@@ -12,221 +12,196 @@ from libdrive.libdrive import DriveManager
 from libhardware.libhardware import dmiInfo, pciInfo
 from platforms import getPlatform
 
-contractor = getClient()
+def main( contractor ):
+  print( 'Getting Hardware Information...' )
+  hardware = {}
+  hardware[ 'dmi' ] = dmiInfo()
+  hardware[ 'pci' ] = pciInfo()
+  hardware[ 'total_ram' ] = lib.getRAMAmmount()
+  hardware[ 'total_cpu_count' ] = lib.cpuLogicalCount()
+  hardware[ 'total_cpu_sockets' ] = lib.cpuPhysicalCount()
 
-print( 'Getting Hardware Information...' )
-hardware = {}
-hardware[ 'dmi' ] = dmiInfo()
-hardware[ 'pci' ] = pciInfo()
-hardware[ 'total_ram' ] = lib.getRAMAmmount()
-hardware[ 'total_cpu_count' ] = lib.cpuLogicalCount()
-hardware[ 'total_cpu_sockets' ] = lib.cpuPhysicalCount()
+  dm = DriveManager()
 
-dm = DriveManager()
+  print( 'Getting Platform Handler...' )
+  platform = getPlatform( hardware )
+  platform.startIdentify()
 
-print( 'Getting Platform Handler...' )
-platform = getPlatform( hardware )
-platform.startIdentify()
+  print( 'Found "{0}" Platform.'.format( platform.type ) )
 
-print( 'Found "{0}" Platform.'.format( platform.type ) )
+  with open( '/tmp/dhcp-interface', 'r' ) as dhcp_interface:
+    primary_iface = dhcp_interface.read().strip()
 
-primary_iface = open( '/tmp/dhcp-interface', 'r' ).read().strip()
+  foundation_locator = None
 
-foundation_locator = None
+  print( 'Generating unique Id...' )
+  hasher = hashlib.sha256()
 
-print( 'Generating unique Id...' )
-hasher = hashlib.sha256()
+  for item in hardware[ 'dmi' ][ 'Processor Information' ]:
+    hasher.update( item[ 'ID' ].encode() )
 
-for item in hardware[ 'dmi' ][ 'Processor Information' ]:
-  hasher.update( item[ 'ID' ].encode() )
+  for item in hardware[ 'dmi' ][ 'System Info' ]:
+    hasher.update( item[ 'Product Name' ].encode() )
+    hasher.update( item[ 'Version' ].encode() )
+    hasher.update( item[ 'Serial Number' ].encode() )
+    hasher.update( item[ 'UUID' ].encode() )
 
-for item in hardware[ 'dmi' ][ 'System Info' ]:
-  hasher.update( item[ 'Product Name' ].encode() )
-  hasher.update( item[ 'Version' ].encode() )
-  hasher.update( item[ 'Serial Number' ].encode() )
-  hasher.update( item[ 'UUID' ].encode() )
+  for item in hardware[ 'dmi' ][ 'Base Board Information' ]:
+    hasher.update( item[ 'Product Name' ].encode() )
+    hasher.update( item[ 'Serial Number' ].encode() )
+    hasher.update( item[ 'Asset Tag' ].encode() )
 
-for item in hardware[ 'dmi' ][ 'Base Board Information' ]:
-  hasher.update( item[ 'Product Name' ].encode() )
-  hasher.update( item[ 'Serial Number' ].encode() )
-  hasher.update( item[ 'Asset Tag' ].encode() )
+  for item in hardware[ 'dmi' ][ 'Chassis Information' ]:
+    hasher.update( item[ 'Version' ].encode() )
+    hasher.update( item[ 'Serial Number' ].encode() )
+    hasher.update( item[ 'Asset Tag' ].encode() )
 
-for item in hardware[ 'dmi' ][ 'Chassis Information' ]:
-  hasher.update( item[ 'Version' ].encode() )
-  hasher.update( item[ 'Serial Number' ].encode() )
-  hasher.update( item[ 'Asset Tag' ].encode() )
+  identifier = hasher.hexdigest()
 
-identifier = hasher.hexdigest()
+  print( 'My Identifier is "{0}"'.format( identifier ) )
 
-print( 'My Identifier is "{0}"'.format( identifier ) )
-bootstrap = lib.Bootstrap( identifier, contractor )   # TODO: start a try block and post any exception to the Cartographer
+  with lib.Bootstrap( identifier, contractor ) as bootstrap:
+    lib._setMessage = bootstrap.setMessage
+    platform._setMessage = bootstrap.setMessage
 
-lib._setMessage = bootstrap.setMessage
-platform._setMessage = bootstrap.setMessage
+    bootstrap.setMessage( 'Getting LLDP Information...' )
+    print( 'Getting LLDP Information...' )
+    lldp = lib.getLLDP()
 
-bootstrap.setMessage( 'Getting LLDP Information...' )
-print( 'Getting LLDP Information...' )
-lldp = lib.getLLDP()
+    info_map = {}
+    info_map[ 'hardware' ] = hardware
+    info_map[ 'lldp' ] = lldp
+    info_map[ 'ip_address' ] = lib.getIpAddress( primary_iface )
+    info_map[ 'config_uuid' ] = os.environ.get( 'config_uuid' )
 
-info_map = { 'hardware': hardware, 'lldp': lldp, 'ip_address': lib.getIpAddress( primary_iface ) }
+    while not foundation_locator:
+      print( 'Looking up....' )
+      lookup = bootstrap.lookup( info_map )
 
-try:
-  info_map[ 'config_uuid' ] = os.environ.get( 'config_uuid' )
-except KeyError:
-  pass
+      if lookup[ 'matched_by' ] is None:
+        bootstrap.setMessage( 'no match' )
+        print( 'Waiting....' )
+        time.sleep( 10 + random.randint( 0, 41 ) )
 
-while not foundation_locator:
-  print( 'Looking up....' )
-  lookup = bootstrap.lookup( info_map )
+      else:
+        foundation_locator = lookup[ 'locator' ]
 
-  if lookup[ 'matched_by' ] is None:
-    bootstrap.setMessage( 'no match' )
-    print( 'Waiting....' )
-    time.sleep( 10 + random.randint( 0, 41 ) )
+    print( '** Hello World! I am Foundation "{0}", nice to meet you! **'.format( foundation_locator ) )
+    print( 'Matched by "{0}"'.format( lookup[ 'matched_by' ] ) )
+    bootstrap.setMessage( 'Matched as "{0}" by "{1}"'.format( foundation_locator, lookup[ 'matched_by' ] ) )
 
-  else:
-    foundation_locator = lookup[ 'locator' ]
+    config = contractor.getConfig( foundation_locator=foundation_locator )
+    platform.setup( config )
 
-print( '** Hello World! I am Foundation "{0}", nice to meet you! **'.format( foundation_locator ) )
-print( 'Matched by "{0}"'.format( lookup[ 'matched_by' ] ) )
-bootstrap.setMessage( 'Matched as "{0}" by "{1}"'.format( foundation_locator, lookup[ 'matched_by' ] ) )
+    bootstrap.setMessage( 'Geting Hardware Information...' )
+    print( 'Getting Network Information...' )
+    network = {}
 
-config = contractor.getConfig( foundation_locator=foundation_locator )
-platform.setup( config )
+    for item in glob.glob( '/sys/class/net/eth*' ):
+      with open( os.path.join( item, 'address' ), 'r' ) as ethdev:
+        network[ item.split( '/' )[ -1 ] ] = { 'mac': ethdev.read().strip() }
 
-bootstrap.setMessage( 'Geting Hardware Information...' )
-print( 'Getting Network Information...' )
-network = {}
+    network.update( platform.getNetwork() )
 
-for item in glob.glob( '/sys/class/net/eth*' ):
-  network[ item.split( '/' )[ -1 ] ] = { 'mac': open( os.path.join( item, 'address' ), 'r' ).read().strip() }
+    if primary_iface not in network:
+      network[ primary_iface ] = {}
 
-network.update( platform.getNetwork() )
+    network[ primary_iface ][ 'primary' ] = True
 
-for iface in lldp:
-  if iface not in network:
-    continue
+    print( 'Getting Disk Information...' )
+    disks = {}
+    for drive in dm.drive_list:
+      try:
+        item = drive.reporting_info
+      except Exception as e:
+        print( 'Warning: Error getting info from "{0}"({1}), skipped...'.format( drive, e ) )
+        continue
 
-  network[ iface ][ 'lldp' ] = lldp[ iface ]
+      item[ 'capacity' ] = drive.capacity
+      item[ 'devpath' ] = drive.devpath
+      item[ 'pcipath' ] = drive.pcipath
+      item[ 'isSSD' ] = drive.isSSD
+      item[ 'isVirtualDisk' ] = drive.isVirtualDisk
+      disks[ drive.location ] = item
+      drive.setFault( False )
 
-if primary_iface not in network:
-  network[ primary_iface ] = {}
+    # 'Getting SCSI/Disk Enclosure Information...'
 
-network[ primary_iface ][ 'primary' ] = True
+    bootstrap.setMessage( 'Reporting Hardware info...' )
+    print( 'Reporting Hardware info to contractor...' )
+    error = bootstrap.setIdMap( foundation_locator, { 'hardware': hardware, 'network': network, 'disks': disks } )
+    if error is not None:
+      bootstrap.setMessage( 'Hardware Error: "{0}"'.format( error ) )
+      sys.exit( 20 )
 
-print( 'Getting Disk Information...' )
-disks = []
-for drive in dm.drive_list:
-  try:
-    item = drive.reporting_info
-  except Exception as e:
-    print( 'Warning: Error getting info from "{0}"({1}), skipped...'.format( drive, e ) )
-    continue
+    bootstrap.setMessage( 'Hardware Profile Verified' )
 
-  item[ 'capacity' ] = drive.capacity
-  item[ 'devpath' ] = drive.devpath
-  item[ 'pcipath' ] = drive.pcipath
-  item[ 'isSSD' ] = drive.isSSD
-  item[ 'isVirtualDisk' ] = drive.isVirtualDisk
-  disks.append( item )
-  drive.setFault( False )
+    bootstrap.setMessage( 'Configuring {0}...'.format( platform.type ) )
 
-# 'Getting SCSI/Disk Enclosure Information...'
+    changed = platform.setAuth()
 
-bootstrap.setMessage( 'Reporting Hardware info...' )
-print( 'Reporting Hardware info to contractor...' )
-error = bootstrap.setIdMap( foundation_locator, { 'hardware': hardware, 'network': network, 'disks': disks } )
-if error is not None:
-  bootstrap.setMessage( 'Hardware Error: "{0}"'.format( error ) )
-  bootstrap.logout()
-  sys.exit( 20 )
+    changed = changed or platform.setIp()
 
-bootstrap.setMessage( 'Hardware Profile Verified' )
-
-iface_list = []
-
-bootstrap.setMessage( 'Configuring {0}...'.format( platform.type ) )
-
-changed = platform.setAuth()
-
-changed != platform.setIp()
-
-if changed:
-  print( 'Preping Platform...' )
-  bootstrap.setMessage( 'Preping Platform...' )
-  platform.prep()
+    if changed:
+      print( 'Preping Platform...' )
+      bootstrap.setMessage( 'Preping Platform...' )
+      platform.prep()
 
 
-if config.get( 'bootstrap_wipe_mbr', False ):
-  bootstrap.setMessage( 'Clearing MBRs...' )
-  for drive in dm.drive_list:
-    if drive.block_path is not None:
-      tmp = open( drive.block_path, 'r+b' )
-      tmp.write( bytes( [ 0, 0, 0, 0, 0 ] ) )
-      tmp.close()
+    if config.get( 'bootstrap_wipe_mbr', False ):
+      bootstrap.setMessage( 'Clearing MBRs...' )
+      for drive in dm.drive_list:
+        if drive.block_path is not None:
+          with open( drive.block_path, 'r+b' ) as block_dev:
+            block_dev.write( bytes( [ 0, 0, 0, 0, 0 ] ) )
 
 
-#  if config.get( 'clear_boot', False ):
-#    for item in efibootmgr
-#       item.delete
-#  add item for the ip interface that we have an ip on
+    #  if config.get( 'clear_boot', False ):
+    #    for item in efibootmgr
+    #       item.delete
+    #  add item for the ip interface that we have an ip on
 
 
-# if config.get( 'bios_config', False ) and config.get( 'bios_config_location', False ):
-#   bootstrap.setMessage( 'Loading Initial BIOS Config' )
-#   if isinstance( config[ 'bios_config' ], basestring ):
-#     config_file_list = [ config[ 'bios_config' ] ]
-#   else:
-#     config_file_list = list( config[ 'bios_config' ] )
-#
-#   local_config_file = '/tmp/biosconfig'
-#
-#   success = False
-#
-#   for config_file in config_file_list:
-#     url = '%s%s' % ( config[ 'bios_config_location' ], config_file )
-#     print 'Retreiving BIOS config "%s" ...' % url  # disabeling proxy for now, need a http_server proxy
-#     proc = Popen( [ '/bin/wget', '-Yoff', '-q', '-O', local_config_file, url ] )
-#     if proc.wait() != 0:
-#       bootstrap.setMessage( 'Error getting bios config' )
-#       bootstrap.logout()
-#       sys.exit( 1 )
-#
-#     cmd = None
-#
-#     bios_password = config.get( 'bios_password', '' )
-#
-#     if baseboard in ( 'S2600JF', ):
-#       cmd = [ './syscfg', '13', bios_password, local_config_file ]
-#
-#     elif baseboard in ( 'X9DRE-TF+/X9DR7-TF+', 'X9DRW' ):
-#       cmd = [ './sum', '1_3', bios_password, local_config_file ]
-#
-#     elif baseboard in ( 'X10DRU-i+', ):
-#       cmd = [ './sum', '1_5', bios_password, local_config_file ]
-#
-#     if cmd is None:
-#       bootstrap.setMessage( 'Motherboard "{0}" not supported'.format( baseboard ) )
-#       bootstrap.logout()
-#       sys.exit( 1 )
-#
-#     proc = Popen( cmd )
-#     if proc.wait() == 0:
-#       success = True
-#       break
-#
-#     print 'trying next file...'
-#
-#   if not success:
-#     bootstrap.setMessage( 'BIOS Config Failed' )
-#     bootstrap.logout()
-#     sys.exit( 1 )
+    # if config.get( 'bios_config', False ) and config.get( 'bios_config_location', False ):
+    #   bootstrap.setMessage( 'Loading Initial BIOS Config' )
+    #   if isinstance( config[ 'bios_config' ], basestring ):
+    #     config_file_list = [ config[ 'bios_config' ] ]
+    #   else:
+    #     config_file_list = list( config[ 'bios_config' ] )
+    #
+    #   local_config_file = '/tmp/biosconfig'    #     sys.exit( 1 )
 
-bootstrap.setMessage( 'Cleaning up...' )
+    #
+    #   success = False
+    #
+    #   for config_file in config_file_list:
+    #     url = '%s%s' % ( config[ 'bios_config_location' ], config_file )
+    #     print 'Retreiving BIOS config "%s" ...' % url  # disabeling proxy for now, need a http_server proxy
+    #     proc = Popen( [ '/bin/wget', '-Yoff', '-q', '-O', local_config_file, url ] )
+    #     if proc.wait() != 0:
+    #       bootstrap.setMessage( 'Error getting bios config' )
+    #       sys.exit( 1 )
+    #
+    #     cmd = None
+    #
+    #     bios_password = config.get( 'bios_password', '' )
+    #
+    #     if baseboard in ( 'S2600JF', ):
+    #       cmd = [ './syscfg', '13', bios_password, local_config_file ]
+    #
+    #     elif baseboard in ( 'X9DRE-TF+/X9DR7-TF+', 'X9DRW' ):
+    #       cmd = [ './sum', '1_3', bios_password, local_config_file ]
+    #
+    #     elif baseboard in ( 'X10DRU-i+', ):
+    #       cmd = [ './sum', '1_5', bios_password, local_config_file ]
+    #    #     sys.exit( 1 )
 
-platform.stopIdentify()
+    platform.stopIdentify()
 
-bootstrap.done()
-bootstrap.logout()
+    bootstrap.done()
+
+with getClient() as contractor:
+  main( contractor )
+
 print( 'All Done' )
 sys.exit( 0 )
