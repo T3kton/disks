@@ -232,6 +232,7 @@ class Config():
   def _renderTemplate( self, package, value_map, template, root_dir ):
     env = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
     env.filters[ 'unique_list' ] = unique_list
+    env.filters[ 'tuple' ] = tuple
     env.globals.update( _dry_run=False )
     env.globals.update( _root_dir=os.path.join( self.root_dir, root_dir ) )
     tmpl = env.get_template( '{0}.tpl'.format( template ) )
@@ -241,6 +242,7 @@ class Config():
   def _targetFiles( self, package, value_map, template ):
     env = Environment( loader=FileSystemLoader( os.path.join( self.template_dir, package ) ), extensions=[ TargetWriter, do_ext ] )
     env.filters[ 'unique_list' ] = unique_list
+    env.filters[ 'tuple' ] = tuple
     env.globals.update( _dry_run=True )
     try:
       tmpl = env.get_template( '{0}.tpl'.format( template ) )

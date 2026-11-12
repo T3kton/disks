@@ -23,7 +23,7 @@ image=noble-server-cloudimg-amd64-root.tar.xz
 
 [packaging]
 manager_type=apt
-source_templates=
+source_templates=sources,apt
 prebase_templates=
 packages=
 

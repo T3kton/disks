@@ -24,6 +24,8 @@ packages=gnupg
 
 [packaging]
 manager_type=apt
+key_storage=file
+key_file_location=/usr/share/keyrings/
 prebase_templates=timezone
 selection_1=config-curator  config-curator/config-host       string {{ config_host }}
 selection_2=config-curator  config-curator/config-proxy      string {{ config_proxy }}
@@ -40,7 +42,7 @@ selection_12=grub-efi-amd64 grub2/linux_cmdline_default      string
 prebase_cmd_1=/usr/sbin/dpkg-reconfigure -f noninteractive tzdata
 base=ubuntu-standard
 packages=console-setup language-pack-en-base
-source_templates=sources,apt
+source_templates=sources,ubuntu-sources,apt
 divert_1=/sbin/initctl:/bin/true
 divert_2=/sbin/status:/bin/true
 divert_3=/sbin/start:/bin/true

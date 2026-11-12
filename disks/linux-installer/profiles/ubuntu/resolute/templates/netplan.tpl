@@ -1,0 +1,1 @@
+../../noble/templates/netplan.tpl

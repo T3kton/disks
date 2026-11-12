@@ -26,7 +26,7 @@ baseurl={{ repo.uri }}
 enabled=1
 {% if repo.proxy and repo.proxy != 'local' %}proxy={{ repo.proxy }}{% endif %}
 {% if repo.key_file %}gpgcheck=1
-gpgkey=file://{{ repo.key_file }}{% endif %}
+gpgkey=file:///etc/pki/rpm-gpg/{{ repo.key_file }}{% endif %}
 {% endfor %}
 {% endtarget %}
 {% endfor %}

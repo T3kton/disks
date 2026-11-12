@@ -11,15 +11,18 @@ divert_list = []
 def configSources( install_root, profile, value_map ):
   global manager_type
   manager_type = profile.get( 'packaging', 'manager_type' )
+  key_storage = profile.get( 'packaging', 'key_storage' )
+  key_file_location = profile.get( 'packaging', 'key_file_location' )
 
   if manager_type not in ( 'apt', 'yum', 'zypper' ):
     raise Exception( 'Unknwon Packaging manager type "{0}"'.format( manager_type ) )
 
   if manager_type == 'yum':
     execute( 'sh -c "rm {0}/etc/yum.repos.d/*"'.format( install_root ) )
-
+  print( '_______________________')
   key_uris = []
   for repo in value_map[ 'repo_list' ]:
+    print( repo )
     if 'key_uri' in repo:
       if repo[ 'type' ] != manager_type:
         continue
@@ -34,14 +37,15 @@ def configSources( install_root, profile, value_map ):
         tmp = http_getfile( uri, proxy=proxy )
 
         if 'key_file' in repo:
-          key_file_path = '{0}/{1}'.format( install_root, repo[ 'key_file' ] )
+          key_file_path = os.path.join( install_root, key_file_location, repo[ 'key_file' ] )
+          print( key_file_location )
           if not os.path.isdir( os.path.dirname( key_file_path ) ):
             os.makedirs( os.path.dirname( key_file_path ) )
 
           with open( key_file_path, 'wb' ) as key_file:
             key_file.write( tmp )
 
-        elif manager_type == 'apt':  # for binary keys, write it to a file ^
+        elif manager_type == 'apt' and key_storage == 'apt':  # for binary keys, write it to a file
           chroot_execute( '/usr/bin/apt-key add -', tmp.decode() )
 
         key_uris.append( uri )
